@@ -50,6 +50,7 @@ define(function(require){
                 showImportExportBtn : (SessionMgr.isUser() || XAUtil.isAuditorOrKMSAuditor(SessionMgr)) ? false : true,
                 isZoneAdministration : (SessionMgr.isSystemAdmin()|| SessionMgr.isUser() || SessionMgr.isAuditor()) ? true : false,
                 isServiceManager : (App.vZone && _.isEmpty(App.vZone.vZoneName)) ? true : false,
+                setOldUi : localStorage.getItem('setOldUI') == "true" ? true : false,
 			};
 			
 		},
@@ -111,13 +112,12 @@ define(function(require){
                     vZoneName: ""
                 }
             }
-            if(this.type && this.type.split('?')[1]) {
-                var searchFregment = XAUtil.changeUrlToSearchQuery(decodeURIComponent(this.type.substring(this.type.indexOf("?") + 1)));
-                console.log(searchFregment);
-                if(_.has(searchFregment, 'securityZone')) {
-                        App.vZone.vZoneName = searchFregment['securityZone'];
-                }
-            }
+			if (!_.isUndefined(XAUtil.urlQueryParams())) {
+				var searchFregment = XAUtil.changeUrlToSearchQuery(decodeURIComponent(XAUtil.urlQueryParams()));
+				if(_.has(searchFregment, 'securityZone')) {
+					App.vZone.vZoneName = searchFregment['securityZone'];
+				}
+			}
         },
 
 		/** all events binding here */

@@ -62,8 +62,11 @@ import org.apache.ranger.admin.client.datatype.RESTResponse;
 import org.apache.ranger.authorization.hadoop.config.RangerAdminConfig;
 import org.apache.ranger.authorization.utils.StringUtil;
 import org.apache.ranger.biz.AssetMgr;
+import org.apache.ranger.biz.PolicyRefUpdater;
 import org.apache.ranger.biz.RangerPolicyAdmin;
 import org.apache.ranger.biz.RangerBizUtil;
+import org.apache.ranger.biz.RangerPolicyAdminCache;
+import org.apache.ranger.biz.RangerPolicyAdminCacheForEngineOptions;
 import org.apache.ranger.biz.RoleDBStore;
 import org.apache.ranger.biz.SecurityZoneDBStore;
 import org.apache.ranger.biz.ServiceDBStore;
@@ -110,8 +113,6 @@ import org.apache.ranger.plugin.model.validation.RangerValidator.Action;
 import org.apache.ranger.plugin.policyengine.RangerAccessResource;
 import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
 import org.apache.ranger.plugin.policyengine.RangerPolicyEngine;
-import org.apache.ranger.biz.RangerPolicyAdminCache;
-import org.apache.ranger.biz.RangerPolicyAdminCacheForEngineOptions;
 import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
 import org.apache.ranger.plugin.service.ResourceLookupContext;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
@@ -169,6 +170,7 @@ public class ServiceREST {
 	final static public String PARAM_UPDATE_IF_EXISTS = "updateIfExists";
 	final static public String PARAM_MERGE_IF_EXISTS  = "mergeIfExists";
 	final static public String PARAM_DELETE_IF_EXISTS = "deleteIfExists";
+	final static public String PARAM_IMPORT_IN_PROGRESS = "importInProgress";
 	public static final String Allowed_User_List_For_Download = "policy.download.auth.users";
 	public static final String Allowed_User_List_For_Grant_Revoke = "policy.grantrevoke.auth.users";
 
@@ -1657,12 +1659,14 @@ public class ServiceREST {
 			if(RangerPerfTracer.isPerfTraceEnabled(PERF_LOG)) {
 				perf = RangerPerfTracer.getPerfTracer(PERF_LOG, "ServiceREST.createPolicy(policyName=" + policy.getName() + ")");
 			}
-
 			if(request != null) {
 				boolean deleteIfExists=("true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_DELETE_IF_EXISTS)))) ? true : false ;
 				if(deleteIfExists) {
-					List<RangerPolicy> policies=new ArrayList<RangerPolicy>() { { add(policy); } };
-					deleteExactMatchPolicyForResource(policies, request.getRemoteUser(), null);
+					boolean importInProgress=("true".equalsIgnoreCase(StringUtils.trimToEmpty(String.valueOf(request.getAttribute(PARAM_IMPORT_IN_PROGRESS))))) ? true : false ;
+					if (!importInProgress) {
+						List<RangerPolicy> policies=new ArrayList<RangerPolicy>() { { add(policy); } };
+						deleteExactMatchPolicyForResource(policies, request.getRemoteUser(), null);
+					}
 				}
 				boolean updateIfExists=("true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_UPDATE_IF_EXISTS)))) ? true : false ;
 				boolean mergeIfExists  = "true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_MERGE_IF_EXISTS)))  ? true : false;
@@ -1747,10 +1751,10 @@ public class ServiceREST {
 				} else {
 					existingPolicy = null;
 				}
-				boolean mergeIfExists  = "true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_MERGE_IF_EXISTS)))  ? true : false;
+
 				if (existingPolicy == null) {
 					if (StringUtils.isNotEmpty(policy.getName())) {
-						XXPolicy dbPolicy = daoManager.getXXPolicy().findByPolicyName(policy.getName());
+						XXPolicy dbPolicy = daoManager.getXXPolicy().findPolicy(policy.getName(), policy.getService(), policy.getZoneName());
 						if (dbPolicy != null) {
 							policy.setName(policy.getName() + System.currentTimeMillis());
 						}
@@ -1758,10 +1762,26 @@ public class ServiceREST {
 
 					ret = createPolicy(policy, null);
 				} else {
+					boolean mergeIfExists = "true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_MERGE_IF_EXISTS)));
+
+					if (!mergeIfExists) {
+						boolean updateIfExists = "true".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_UPDATE_IF_EXISTS)));
+						if (updateIfExists) {
+							// Called with explicit intent of updating an existing policy
+							mergeIfExists = false;
+						} else {
+							// Invoked through REST API. Merge with existing policy unless 'mergeIfExists' is explicitly set to false in HttpServletRequest
+							mergeIfExists = !"false".equalsIgnoreCase(StringUtils.trimToEmpty(request.getParameter(PARAM_MERGE_IF_EXISTS)));
+						}
+					}
+
 					if(mergeIfExists) {
 						ServiceRESTUtil.processApplyPolicy(existingPolicy, policy);
+						policy = existingPolicy;
+					} else {
+						policy.setId(existingPolicy.getId());
 					}
-					ret = updatePolicy(existingPolicy);
+					ret = updatePolicy(policy);
 				}
 			} catch(WebApplicationException excp) {
 				throw excp;
@@ -2184,6 +2204,7 @@ public class ServiceREST {
 		String metaDataInfo = null;
 		List<XXTrxLog> trxLogListError = new ArrayList<XXTrxLog>();
 		XXTrxLog xxTrxLogError = new XXTrxLog();
+		request.setAttribute(PARAM_IMPORT_IN_PROGRESS, true);
 
 		try {
 			if (RangerPerfTracer.isPerfTraceEnabled(PERF_LOG)) {
@@ -2295,9 +2316,6 @@ public class ServiceREST {
 					}
 
 					String destinationZoneName = getDestinationZoneName(destinationZones,zoneNameInJson);
-					if (deleteIfExists) {
-						deleteExactMatchPolicyForResource(policies, request.getRemoteUser(), destinationZoneName);
-					}
 					if (isOverride && !updateIfExists && StringUtils.isEmpty(polResource)) {
 						if (LOG.isDebugEnabled()) {
 							LOG.debug("Deleting Policy from provided services in servicesMapJson file...");
@@ -2327,6 +2345,10 @@ public class ServiceREST {
 										servicesMappingMap, sourceServices, destinationServices, policyInJson,
 										policiesMap);// zone Info is also sent for creating policy map
 							}
+						}
+						if (deleteIfExists) {
+							//deleting target policies if already exist
+							deleteExactMatchPolicyForResource(policies, request.getRemoteUser(), destinationZoneName);
 						}
 					}
 
@@ -3252,6 +3274,52 @@ public class ServiceREST {
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("<== ServiceREST.deletePolicyDeltas(" + olderThan + ")");
+		}
+	}
+
+	@DELETE
+	@Path("/server/purgepolicies/{serviceName}")
+	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+	public void purgeEmptyPolicies(@PathParam("serviceName") String serviceName, @Context HttpServletRequest request) {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.purgeEmptyPolicies(" + serviceName + ")");
+		}
+
+		if (serviceName == null) {
+			throw restErrorUtil.createRESTException(HttpServletResponse.SC_BAD_REQUEST , "Invalid service name", true);
+		}
+
+		RangerPerfTracer perf = null;
+
+		try {
+			if(RangerPerfTracer.isPerfTraceEnabled(PERF_LOG)) {
+				perf = RangerPerfTracer.getPerfTracer(PERF_LOG, "ServiceREST.purgeEmptyPolicies(serviceName=" + serviceName + ")");
+			}
+
+			if (svcStore.getServiceByName(serviceName) == null) {
+				throw new Exception("service does not exist - name=" + serviceName);
+			}
+
+			ServicePolicies servicePolicies = svcStore.getServicePolicies(serviceName, -1L);
+			if (servicePolicies != null && CollectionUtils.isNotEmpty(servicePolicies.getPolicies())) {
+				for (RangerPolicy policy : servicePolicies.getPolicies()) {
+					if (CollectionUtils.isEmpty(PolicyRefUpdater.getAllPolicyItems(policy))) {
+						deletePolicy(policy.getId());
+					}
+				}
+			}
+		} catch(WebApplicationException excp) {
+			throw excp;
+		} catch(Throwable excp) {
+			LOG.error("purgeEmptyPolicies(" + serviceName + ") failed", excp);
+
+			throw restErrorUtil.createRESTException(excp.getMessage());
+		} finally {
+			RangerPerfTracer.log(perf);
+		}
+
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.purgeEmptyPolicies(" + serviceName + ")");
 		}
 	}
 

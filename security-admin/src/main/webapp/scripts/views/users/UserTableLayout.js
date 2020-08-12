@@ -47,6 +47,13 @@ define(function(require){
 		_viewName : 'UserTableLayout',
 		
     	template: UsertablelayoutTmpl,
+
+		templateHelpers : function(){
+			return{
+				setOldUi : localStorage.getItem('setOldUI') == "true" ? true : false,
+			}
+		},
+
     	breadCrumbs :[XALinks.get('Users')],
 		/** Layout sub regions */
     	regions: {
@@ -92,7 +99,8 @@ define(function(require){
 		initialize: function(options) {
 			console.log("initialized a UserTableLayout Layout");
 
-                        _.extend(this, _.pick(options, 'groupList','tab', 'roleList', 'urlQueryParams'));
+			_.extend(this, _.pick(options, 'groupList','tab', 'roleList'));
+			this.urlQueryParams = XAUtil.urlQueryParams();
 			this.showUsers = this.tab == 'usertab' ? true : false;
                         this.showGroups = this.tab == 'grouptab' ? true : false;
 			this.chgFlags = [];

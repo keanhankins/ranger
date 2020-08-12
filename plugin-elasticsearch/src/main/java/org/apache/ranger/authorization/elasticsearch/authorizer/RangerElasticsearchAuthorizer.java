@@ -17,12 +17,13 @@
 
 package org.apache.ranger.authorization.elasticsearch.authorizer;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
+import org.apache.ranger.audit.provider.MiscUtil;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequestImpl;
 import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
 import org.apache.ranger.plugin.policyengine.RangerAccessResult;
@@ -87,7 +88,9 @@ public class RangerElasticsearchAuthorizer implements RangerElasticsearchAccessC
 		boolean ret = false;
 
 		if (elasticsearchPlugin != null) {
-
+			if (null == groups) {
+				groups = new ArrayList <>(MiscUtil.getGroupsForRequestUser(user));
+			}
 			String privilege = IndexPrivilegeUtils.getPrivilegeFromAction(action);
 			RangerElasticsearchAccessRequest request = new RangerElasticsearchAccessRequest(user, groups, index,
 					privilege, clientIPAddress);
@@ -115,7 +118,7 @@ class RangerElasticsearchInnerPlugin extends RangerBasePlugin {
 	public void init() {
 		super.init();
 
-		RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler(getConfig());
+		RangerElasticsearchAuditHandler auditHandler = new RangerElasticsearchAuditHandler(getConfig());
 
 		super.setResultProcessor(auditHandler);
 	}

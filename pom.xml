@@ -23,7 +23,7 @@
     </parent>
     <groupId>org.apache.ranger</groupId>
     <artifactId>ranger</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <description>Security for Enforcing Enterprise Policies</description>
     <packaging>pom</packaging>
     <name>ranger</name>
@@ -45,9 +45,6 @@
         <system>JIRA</system>
         <url>https://issues.apache.org/jira/browse/ranger</url>
     </issueManagement>
-    <prerequisites>
-        <maven>3.0.1</maven>
-    </prerequisites>
     <mailingLists>
         <mailingList>
             <name>Dev Mailing List</name>
@@ -83,10 +80,10 @@
         <asm.all.version>3.2</asm.all.version>
         <aspectj.version>1.8.2</aspectj.version>
         <assembly.plugin.version>2.6</assembly.plugin.version>
-        <atlas.version>3.0.0-SNAPSHOT</atlas.version>
+        <atlas.version>2.1.0</atlas.version>
         <atlas.gson.version>2.5</atlas.gson.version>
-        <atlas.jackson.version>2.9.9</atlas.jackson.version>
-        <atlas.jackson.databind.version>2.9.10.4</atlas.jackson.databind.version>
+        <atlas.jackson.version>2.10.3</atlas.jackson.version>
+        <atlas.jackson.databind.version>2.10.3</atlas.jackson.databind.version>
         <atlas.jettison.version>1.3.7</atlas.jettison.version>
         <atlas.commons.logging.version>1.1.3</atlas.commons.logging.version>
         <bouncycastle.version>1.55</bouncycastle.version>
@@ -181,20 +178,21 @@
         <servlet.api.version>2.5</servlet.api.version>
         <slf4j-api.version>1.7.25</slf4j-api.version>
         <solr.version>7.7.1</solr.version>
-        <spring-ldap-core.version>2.3.2.RELEASE</spring-ldap-core.version>
-        <springframework.security.version>4.2.13.RELEASE</springframework.security.version>
-        <springframework.test.version>4.3.23.RELEASE</springframework.test.version>
-        <springframework.version>4.3.23.RELEASE</springframework.version>
+        <spring-ldap-core.version>2.3.3.RELEASE</spring-ldap-core.version>
+        <springframework.security.version>4.2.17.RELEASE</springframework.security.version>
+        <springframework.test.version>4.3.27.RELEASE</springframework.test.version>
+        <springframework.version>4.3.27.RELEASE</springframework.version>
         <sqoop.version>1.99.7</sqoop.version>
         <storm.version>1.2.0</storm.version>
         <sun-jersey-bundle.version>1.19</sun-jersey-bundle.version>
-        <tomcat.embed.version>7.0.100</tomcat.embed.version>
+        <tomcat.embed.version>7.0.104</tomcat.embed.version>
+        <testng.version>6.9.4</testng.version>
         <velocity.version>1.7</velocity.version>
         <zookeeper.version>3.4.14</zookeeper.version>
         <codehaus.woodstox.stax2api.version>3.1.4</codehaus.woodstox.stax2api.version>
         <fasterxml.woodstox.version>5.0.3</fasterxml.woodstox.version>
-        <fasterxml.jackson.version>2.9.9</fasterxml.jackson.version>
-        <fasterxml.jackson.databind.version>2.9.10.4</fasterxml.jackson.databind.version>
+        <fasterxml.jackson.version>2.10.3</fasterxml.jackson.version>
+        <fasterxml.jackson.databind.version>2.10.3</fasterxml.jackson.databind.version>
         <kstruct.gethostname4j.version>0.0.2</kstruct.gethostname4j.version>
         <jna.version>5.2.0</jna.version>
         <jna-platform.version>5.2.0</jna-platform.version>
@@ -219,7 +217,7 @@
         <org.bouncycastle.bcpkix-jdk15on>1.59</org.bouncycastle.bcpkix-jdk15on>
         <lucene.version>8.4.0</lucene.version>
         <hppc.version>0.8.0</hppc.version>
-        <joda.time.version>2.10.5</joda.time.version>
+        <joda.time.version>2.10.6</joda.time.version>
         <log4j.core.version>2.11.1</log4j.core.version>
     </properties>
     <profiles>
@@ -233,6 +231,7 @@
                 <module>agents-audit</module>
                 <module>agents-common</module>
                 <module>agents-cred</module>
+                <module>intg</module>
                 <module>agents-installer</module>
                 <module>credentialbuilder</module>
                 <module>embeddedwebserver</module>
@@ -286,6 +285,15 @@
                    ranger-elasticsearch-plugin-shim, make sure to update dependency in distro/pom.xml
                 -->
                 <module>distro</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>ranger-examples</id>
+            <modules>
+                <module>agents-common</module>
+                <module>agents-cred</module>
+                <module>intg</module>
+                <module>ranger-examples</module>
             </modules>
         </profile>
         <profile>
@@ -513,10 +521,11 @@
                 </os>
             </activation>
             <modules>
-        <module>jisql</module>
+                <module>jisql</module>
                 <module>agents-audit</module>
                 <module>agents-common</module>
                 <module>agents-cred</module>
+                <module>intg</module>
                 <module>agents-installer</module>
                 <module>credentialbuilder</module>
                 <module>embeddedwebserver</module>
@@ -600,6 +609,7 @@
                 <module>agents-audit</module>
                 <module>agents-common</module>
                 <module>agents-cred</module>
+                <module>intg</module>
                 <module>agents-installer</module>
                 <module>credentialbuilder</module>
                 <module>embeddedwebserver</module>
@@ -664,6 +674,26 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>1.4.1</version>
+                        <executions>
+                            <execution>
+                                <id>enforce-maven</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireMavenVersion>
+                                            <version>3.0.1</version>
+                                        </requireMavenVersion>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -711,6 +741,12 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>

@@ -56,7 +56,8 @@ define(function(require){
 				rangerPolicyType : this.collection.queryParams['policyType'],
 				isRenderAccessTab : XAUtil.isRenderMasking(this.rangerServiceDefModel.get('dataMaskDef')) ? true 
                                         : XAUtil.isRenderRowFilter(this.rangerServiceDefModel.get('rowFilterDef')) ? true : false,
-                isAddNewPolicyButtonShow : !(XAUtil.isAuditorOrKMSAuditor(SessionMgr)) && this.rangerService.get('isEnabled')
+                isAddNewPolicyButtonShow : !(XAUtil.isAuditorOrKMSAuditor(SessionMgr)) && this.rangerService.get('isEnabled'),
+                setNewUi : localStorage.getItem('setOldUI') == "true" ? false : true,
 			};
 		},
         
@@ -111,7 +112,8 @@ define(function(require){
 		*/
 		initialize: function(options) {
 			console.log("initialized a RangerPolicyTableLayout Layout");
-                        _.extend(this, _.pick(options,'rangerService', 'urlQueryParams'));
+			_.extend(this, _.pick(options,'rangerService', 'urlQueryParams'));
+			this.urlQueryParams = XAUtil.urlQueryParams(); 
 			this.bindEvents();
 			this.initializeServiceDef();
 			if(_.isUndefined(App.vZone)) {
@@ -374,11 +376,11 @@ define(function(require){
 				formatter: _.extend({}, Backgrid.CellFormatter.prototype, {
 					fromRaw: function (rawValue,model) {
                         if(XAUtil.isAuditorOrKMSAuditor(SessionMgr)){
-                            return '<a href="javascript:void(0);" data-name ="viewPolicy" data-id="'+model.id+'" class="btn btn-mini" title="View"><i class="icon-eye-open icon-large" /></a>';
+                            return '<a href="javascript:void(0);" data-name ="viewPolicy" data-id="'+model.id+'" class="btn btn-mini" title="View"><i class="icon-eye-open icon-large"></i></a>';
                         }else{
-                            return '<a href="javascript:void(0);" data-name ="viewPolicy" data-id="'+model.id+'" class="btn btn-mini" title="View"><i class="icon-eye-open icon-large" /></a>\
-                                    <a href="#!/service/'+that.rangerService.id+'/policies/'+model.id+'/edit" class="btn btn-mini" title="Edit"><i class="icon-edit icon-large" /></a>\
-                                    <a href="javascript:void(0);" data-name ="deletePolicy" data-id="'+model.id+'"  class="btn btn-mini btn-danger" title="Delete"><i class="icon-trash icon-large" /></a>';
+                            return '<a href="javascript:void(0);" data-name ="viewPolicy" data-id="'+model.id+'" class="btn btn-mini" title="View"><i class="icon-eye-open icon-large"></i></a>\
+                                    <a href="#!/service/'+that.rangerService.id+'/policies/'+model.id+'/edit" class="btn btn-mini" title="Edit"><i class="icon-edit icon-large"></i></a>\
+                                    <a href="javascript:void(0);" data-name ="deletePolicy" data-id="'+model.id+'"  class="btn btn-mini btn-danger" title="Delete"><i class="icon-trash icon-large"></i></a>';
 						//You can use rawValue to custom your html, you can change this value using the name parameter.
                         }
 					}

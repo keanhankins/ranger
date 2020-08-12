@@ -3107,6 +3107,10 @@ public class ServiceDBStore extends AbstractServiceStore {
 			if (CollectionUtils.isNotEmpty(resourcePolicyDeltas)) {
 				isValid = RangerPolicyDeltaUtil.isValidDeltas(resourcePolicyDeltas, componentServiceType);
 
+				if (!isValid) {
+					LOG.warn("Resource policy-Deltas :[" + resourcePolicyDeltas + "] from version :[" + lastKnownVersion + "] are not valid");
+				}
+
 				if (isValid && tagService != null) {
 					Long id = resourcePolicyDeltas.get(0).getId();
 					tagPolicyDeltas = daoMgr.getXXPolicyChangeLog().findGreaterThan(policyService, id, tagService.getId());
@@ -3116,6 +3120,10 @@ public class ServiceDBStore extends AbstractServiceStore {
 						String tagServiceType = tagServiceDef.getName();
 
 						isValid = RangerPolicyDeltaUtil.isValidDeltas(tagPolicyDeltas, tagServiceType);
+
+						if (!isValid) {
+							LOG.warn("Tag policy-Deltas :[" + tagPolicyDeltas + "] for service-version :[" + lastKnownVersion + "] and delta-id :[" + id + "] are not valid");
+						}
 					}
 				}
 
@@ -3140,8 +3148,12 @@ public class ServiceDBStore extends AbstractServiceStore {
 							tagPolicies.setPolicies(null);
 							ret.setTagPolicies(tagPolicies);
 						}
+					} else {
+						LOG.warn("Deltas :[" + resourcePolicyDeltas + "] from version :[" + lastKnownVersion + "] after compressing are null!");
 					}
 				}
+			} else {
+				LOG.warn("No policy-deltas found for serviceId=" + service.getId() + ", tagServiceId=" + (tagService != null ? tagService.getId() : null) + ", lastKnownVersion=" + lastKnownVersion + ")");
 			}
 		}
 
@@ -4710,17 +4722,12 @@ public class ServiceDBStore extends AbstractServiceStore {
 			if (serviceId != null) {
 				loadRangerPolicies(serviceId, processedServices, policyMap, searchFilter);
 			}
-		} else  {
+		} else {
 			xPolList = policyService.searchResources(searchFilter, policyService.searchFields, policyService.sortFields, retList);
 			if (!CollectionUtils.isEmpty(xPolList)) {
-				if (isSearchQuerybyResource(searchFilter)) {
-					XXPolicy xXPolicy = xPolList.get(0);
-					loadRangerPolicies(xXPolicy.getService(), processedServices, policyMap, searchFilter);
-				} else {
-					for (XXPolicy xXPolicy : xPolList) {
-						if (!processedServices.contains(xXPolicy.getService())) {
-							loadRangerPolicies(xXPolicy.getService(), processedServices, policyMap, searchFilter);
-						}
+				for (XXPolicy xXPolicy : xPolList) {
+					if (!processedServices.contains(xXPolicy.getService())) {
+						loadRangerPolicies(xXPolicy.getService(), processedServices, policyMap, searchFilter);
 					}
 				}
 			}
@@ -4825,8 +4832,8 @@ public class ServiceDBStore extends AbstractServiceStore {
 						policyMap.put(rangerPolicy.getId(), rangerPolicy);
 					}
 				}
-				processedServices.add(serviceId);
 			}
+			processedServices.add(serviceId);
 		} catch (Exception e) {
 		}
 	}

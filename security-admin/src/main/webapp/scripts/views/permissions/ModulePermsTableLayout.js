@@ -47,6 +47,9 @@ define(function(require){
 		template: ModulePermsTableLayoutTmpl,
 
 		templateHelpers : function(){
+			return{
+                setOldUi : localStorage.getItem('setOldUI') == "true" ? true : false,
+			}
 		},
 
 		breadCrumbs : function(){
@@ -81,7 +84,8 @@ define(function(require){
 		initialize: function(options) {
 			console.log("initialized a ModulePermsTableLayout Layout");
 			
-                _.extend(this, _.pick(options, 'urlQueryParams'));
+                _.extend(this, _.pick(options));
+                this.urlQueryParams = XAUtil.urlQueryParams();
 			this.bindEvents();
 		},
 
@@ -170,7 +174,7 @@ define(function(require){
 				label : localization.tt("lbl.action"),
 				formatter: _.extend({}, Backgrid.CellFormatter.prototype, {
 					fromRaw: function (rawValue,model) {
-						return '<a href="#!/permissions/'+model.id+'/edit" class="btn btn-mini" title="Edit"><i class="icon-edit icon-large" /></a>';
+						return '<a href="#!/permissions/'+model.id+'/edit" class="btn btn-mini" title="Edit"><i class="icon-edit icon-large"></i></a>';
 					}
 				}),
 				editable: false,

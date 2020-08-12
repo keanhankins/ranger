@@ -67,6 +67,7 @@ define(function(require) {
 			return {
 				repositoryList	: repositoryList,
 				currentDate 	: Globalize.format(new Date(),  "MM/dd/yyyy hh:mm:ss tt"),
+				setOldUi : localStorage.getItem('setOldUI') == "true" ? true : false,
 			};
 		},
 		breadCrumbs : [],
@@ -137,9 +138,10 @@ define(function(require) {
                 App.vsHistory = {'bigData':[], 'admin':[], 'loginSession':[], 'agent':[],'pluginStatus':[], 'userSync': []};
             }
             //Add url params to vsHistory
-            if(!_.isUndefined(this.tab.split('?')[1])) {
+           	this.urlQueryParams = XAUtils.urlQueryParams();
+            if(!_.isUndefined(this.urlQueryParams)) {
                 App.vsHistory[that.tab.split('?')[0]] = [];
-                var searchFregment = XAUtils.changeUrlToSearchQuery(decodeURIComponent(this.tab.substring(this.tab.indexOf("?") + 1)));
+                var searchFregment = XAUtils.changeUrlToSearchQuery(decodeURIComponent(this.urlQueryParams));
                 _.map (searchFregment, function(val, key) {
                     if (key !== "sortBy" && key !== "sortType" && key !== "sortKey") {
                         if (_.isArray(val)) {
@@ -428,7 +430,7 @@ define(function(require) {
                                    //{text : localization.tt("lbl.permission"), label :'action', urlLabel : 'permission'}
                                 ];
             var searchOpt = ['Resource Type','Start Date','End Date','Application','User','Service Name','Service Type','Resource Name','Access Type','Result','Access Enforcer',
-            'Client IP','Tags','Cluster Name', 'Zone Name', 'Exclude User', localization.tt("lbl.agentHost")];//, localization.tt("lbl.permission")];//,'Policy ID'
+            'Client IP','Tags','Cluster Name', 'Zone Name', 'Exclude User', localization.tt("lbl.agentHost"), 'Policy ID'];//, localization.tt("lbl.permission")];
                         this.clearVisualSearch(this.accessAuditList, serverAttrName);
                         this.searchInfoArr =[{text :'Access Enforcer', info :localization.tt('msg.accessEnforcer')},
                                             {text :'Access Type' 	, info :localization.tt('msg.accessTypeMsg')},
