@@ -68,7 +68,7 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/src/main/resources/hadoop-ozone-common-0.4.0-alpha.jar</systemPath>
 	-->
-	    <version>0.4.0-alpha</version>
+	    <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
